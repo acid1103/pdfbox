@@ -76,7 +76,7 @@ public abstract class PDFStreamEngine
 {
     private static final Log LOG = LogFactory.getLog(PDFStreamEngine.class);
 
-    private final Map<String, OperatorProcessor> operators = new HashMap<String, OperatorProcessor>(80);
+    protected final Map<String, OperatorProcessor> operators = new HashMap<String, OperatorProcessor>(80);
 
     private Matrix textMatrix;
     private Matrix textLineMatrix;
@@ -493,7 +493,7 @@ public abstract class PDFStreamEngine
      * @param contentStream to content stream to parse.
      * @throws IOException if there is an error reading or parsing the content stream.
      */
-    private void processStreamOperators(PDContentStream contentStream) throws IOException
+    protected void processStreamOperators(PDContentStream contentStream) throws IOException
     {
         List<COSBase> arguments = new ArrayList<COSBase>();
         PDFStreamParser parser = new PDFStreamParser(contentStream);
