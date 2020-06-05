@@ -172,6 +172,9 @@ public class TestIsartorBavaria
         this.expectedErrorSet = errorSet;
     }
 
+    @Test
+    public void skip() {}
+
     // @Test()
     public void validate() throws Exception
     {
