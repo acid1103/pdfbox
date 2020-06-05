@@ -172,7 +172,7 @@ public class TestIsartorBavaria
         this.expectedErrorSet = errorSet;
     }
 
-    @Test()
+    // @Test()
     public void validate() throws Exception
     {
         PreflightDocument document = null;
