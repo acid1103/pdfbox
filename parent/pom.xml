@@ -33,7 +33,7 @@
 
     <groupId>org.apache.pdfbox</groupId>
     <artifactId>pdfbox-parent</artifactId>
-    <version>2.0.19</version>
+    <version>2.0.21</version>
     <packaging>pom</packaging>
 
     <name>PDFBox parent</name>
@@ -75,7 +75,7 @@
             <dependency>
                 <groupId>commons-io</groupId>
                 <artifactId>commons-io</artifactId>
-                <version>2.6</version>
+                <version>2.7</version>
                 <scope>test</scope>
             </dependency>
             <dependency>
@@ -180,6 +180,15 @@
             <build>
                 <plugins>
                     <plugin>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <configuration>
+                            <systemPropertyVariables>
+                                <!-- we don't want to DoS the TSA server, thus we test this only in pedantic mode -->
+                                <org.apache.pdfbox.examples.pdmodel.tsa>https://freetsa.org/tsr</org.apache.pdfbox.examples.pdmodel.tsa>
+                            </systemPropertyVariables>
+                        </configuration>
+                    </plugin>
+                    <plugin>
                         <groupId>org.apache.rat</groupId>
                         <artifactId>apache-rat-plugin</artifactId>
                         <executions>
@@ -194,7 +203,7 @@
                     <plugin>
                         <groupId>org.owasp</groupId>
                         <artifactId>dependency-check-maven</artifactId>
-                        <version>5.3.0</version>
+                        <version>5.3.2</version>
                         <configuration>
                             <failBuildOnAnyVulnerability>true</failBuildOnAnyVulnerability>
                             <!-- https://github.com/jeremylong/DependencyCheck/issues/1574 -->
@@ -227,12 +236,10 @@
                     <executable>${jdk.path}/bin/javac</executable>
                     <fork>true</fork>
                     <!-- enable these when getting CompilationFailureException without explanation: -->
-                    <compilerArgs>
-                        <arg>-verbose</arg>
-                        <arg>-J-Xmx1g</arg>
-                        <arg>-J-XX:PermSize=256m</arg>
-                        <arg>-J-XX:MaxPermSize=512m</arg>
-                    </compilerArgs>
+                    <!--
+                    <compilerArgument>-verbose</compilerArgument>
+                    <verbose>true</verbose>
+                    -->
                 </configuration>
             </plugin>
             <plugin>
@@ -527,8 +534,8 @@
     </developers>
 
   <scm>
-    <connection>scm:svn:http://svn.apache.org/repos/asf/maven/pom/tags/2.0.19/pdfbox-parent</connection>
-    <developerConnection>scm:svn:https://svn.apache.org/repos/asf/maven/pom/tags/2.0.19/pdfbox-parent</developerConnection>
-    <url>http://svn.apache.org/viewvc/maven/pom/tags/2.0.19/pdfbox-parent</url>
+    <connection>scm:svn:http://svn.apache.org/repos/asf/maven/pom/tags/2.0.21/pdfbox-parent</connection>
+    <developerConnection>scm:svn:https://svn.apache.org/repos/asf/maven/pom/tags/2.0.21/pdfbox-parent</developerConnection>
+    <url>http://svn.apache.org/viewvc/maven/pom/tags/2.0.21/pdfbox-parent</url>
   </scm>
 </project>

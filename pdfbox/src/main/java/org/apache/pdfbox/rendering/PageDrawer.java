@@ -22,6 +22,7 @@ import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.GraphicsConfiguration;
 import java.awt.GraphicsDevice;
+import java.awt.Image;
 import java.awt.Paint;
 import java.awt.Point;
 import java.awt.Rectangle;
@@ -81,6 +82,7 @@ import org.apache.pdfbox.pdmodel.graphics.color.PDColorSpace;
 import org.apache.pdfbox.pdmodel.graphics.color.PDDeviceGray;
 import org.apache.pdfbox.pdmodel.graphics.color.PDICCBased;
 import org.apache.pdfbox.pdmodel.graphics.color.PDPattern;
+import org.apache.pdfbox.pdmodel.graphics.color.PDSeparation;
 import org.apache.pdfbox.pdmodel.graphics.form.PDFormXObject;
 import org.apache.pdfbox.pdmodel.graphics.form.PDTransparencyGroup;
 import org.apache.pdfbox.pdmodel.graphics.image.PDImage;
@@ -331,7 +333,14 @@ public class PageDrawer extends PDFGraphicsStreamEngine
     protected Paint getPaint(PDColor color) throws IOException
     {
         PDColorSpace colorSpace = color.getColorSpace();
-        if (!(colorSpace instanceof PDPattern))
+        if (colorSpace instanceof PDSeparation &&
+                "None".equals(((PDSeparation) colorSpace).getColorantName()))
+        {
+            // PDFBOX-4900: "The special colorant name None shall not produce any visible output"
+            //TODO better solution needs to be found for all occurences where toRGB is called
+            return new Color(0, 0, 0, 0);
+        }
+        else if (!(colorSpace instanceof PDPattern))
         {
             float[] rgb = colorSpace.toRGB(color.getComponents());
             return new Color(clampColor(rgb[0]), clampColor(rgb[1]), clampColor(rgb[2]));
@@ -379,7 +388,16 @@ public class PageDrawer extends PDFGraphicsStreamEngine
         Area clippingPath = getGraphicsState().getCurrentClippingPath();
         if (clippingPath != lastClip)
         {
-            graphics.setClip(clippingPath);
+            if (clippingPath.getPathIterator(null).isDone())
+            {
+                // PDFBOX-4822: avoid bug with java printing that empty clipping path is ignored by
+                // replacing with empty rectangle, works because this is not an empty path
+                graphics.setClip(new Rectangle());
+            }
+            else
+            {
+                graphics.setClip(clippingPath);
+            }
             if (initialClip != null)
             {
                 // apply the remembered initial clip, but transform it first
@@ -439,8 +457,8 @@ public class PageDrawer extends PDFGraphicsStreamEngine
     }
 
     @Override
-    protected void showFontGlyph(Matrix textRenderingMatrix, PDFont font, int code, String unicode,
-                                 Vector displacement) throws IOException
+    protected void showFontGlyph(Matrix textRenderingMatrix, PDFont font, int code,
+            Vector displacement) throws IOException
     {
         AffineTransform at = textRenderingMatrix.createAffineTransform();
         at.concatenate(font.getFontMatrix().createAffineTransform());
@@ -517,13 +535,13 @@ public class PageDrawer extends PDFGraphicsStreamEngine
 
     @Override
     protected void showType3Glyph(Matrix textRenderingMatrix, PDType3Font font, int code,
-            String unicode, Vector displacement) throws IOException
+            Vector displacement) throws IOException
     {
         PDGraphicsState state = getGraphicsState();
         RenderingMode renderingMode = state.getTextState().getRenderingMode();
         if (!RenderingMode.NEITHER.equals(renderingMode))
         {
-            super.showType3Glyph(textRenderingMatrix, font, code, unicode, displacement);
+            super.showType3Glyph(textRenderingMatrix, font, code, displacement);
         }
     }
 
@@ -1012,16 +1030,22 @@ public class PageDrawer extends PDFGraphicsStreamEngine
         {
             return;
         }
+        if (!isContentRendered())
+        {
+            return;
+        }
         Matrix ctm = getGraphicsState().getCurrentTransformationMatrix();
         AffineTransform at = ctm.createAffineTransform();
 
         if (!pdImage.getInterpolate())
         {
-            boolean isScaledUp = pdImage.getWidth() < Math.round(at.getScaleX()) ||
-                                 pdImage.getHeight() < Math.round(at.getScaleY());
-
             // if the image is scaled down, we use smooth interpolation, eg PDFBOX-2364
             // only when scaled up do we use nearest neighbour, eg PDFBOX-2302 / mori-cvpr01.pdf
+            // PDFBOX-4930: we use the sizes of the ARGB image. These can be different
+            // than the original sizes of the base image, when the mask is bigger.
+            boolean isScaledUp = pdImage.getImage().getWidth() < Math.round(at.getScaleX()) ||
+                                 pdImage.getImage().getHeight() < Math.round(at.getScaleY());
+
             if (isScaledUp)
             {
                 graphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
@@ -1066,6 +1090,7 @@ public class PageDrawer extends PDFGraphicsStreamEngine
                 Graphics2D g = (Graphics2D) renderedPaint.getGraphics();
                 g.translate(-bounds.getMinX(), -bounds.getMinY());
                 g.setPaint(paint);
+                g.setRenderingHints(graphics.getRenderingHints());
                 g.fill(bounds);
                 g.dispose();
 
@@ -1077,6 +1102,7 @@ public class PageDrawer extends PDFGraphicsStreamEngine
                 AffineTransform imageTransform = new AffineTransform(at);
                 imageTransform.scale(1.0 / mask.getWidth(), -1.0 / mask.getHeight());
                 imageTransform.translate(0, -mask.getHeight());
+                g.setRenderingHints(graphics.getRenderingHints());
                 g.drawImage(mask, imageTransform, null);
                 g.dispose();
 
@@ -1176,21 +1202,23 @@ public class PageDrawer extends PDFGraphicsStreamEngine
         graphics.setComposite(getGraphicsState().getNonStrokingJavaComposite());
         setClip();
         AffineTransform imageTransform = new AffineTransform(at);
+        int width = image.getWidth();
+        int height = image.getHeight();
+        imageTransform.scale(1.0 / width, -1.0 / height);
+        imageTransform.translate(0, -height);
+
         PDSoftMask softMask = getGraphicsState().getSoftMask();
         if( softMask != null )
         {
-            imageTransform.scale(1, -1);
-            imageTransform.translate(0, -1);
-            Paint awtPaint = new TexturePaint(image,
-                    new Rectangle2D.Double(imageTransform.getTranslateX(), imageTransform.getTranslateY(),
-                            imageTransform.getScaleX(), imageTransform.getScaleY()));
+            Rectangle2D rectangle = new Rectangle2D.Float(0, 0, width, height);
+            Paint awtPaint = new TexturePaint(image, rectangle);
             awtPaint = applySoftMaskToPaint(awtPaint, softMask);
             graphics.setPaint(awtPaint);
-            Rectangle2D unitRect = new Rectangle2D.Float(0, 0, 1, 1);
-            if (isContentRendered())
-            {
-                graphics.fill(at.createTransformedShape(unitRect));
-            }
+
+            AffineTransform originalTransform = graphics.getTransform();
+            graphics.transform(imageTransform);
+            graphics.fill(rectangle);
+            graphics.setTransform(originalTransform);
         }
         else
         {
@@ -1200,11 +1228,43 @@ public class PageDrawer extends PDFGraphicsStreamEngine
                 image = applyTransferFunction(image, transfer);
             }
 
-            int width = image.getWidth();
-            int height = image.getHeight();
-            imageTransform.scale(1.0 / width, -1.0 / height);
-            imageTransform.translate(0, -height);
-            if (isContentRendered())
+            // PDFBOX-4516, PDFBOX-4527, PDFBOX-4815, PDFBOX-4886, PDFBOX-4863:
+            // graphics.drawImage() has terrible quality when scaling down, even when
+            // RenderingHints.VALUE_INTERPOLATION_BICUBIC, VALUE_ALPHA_INTERPOLATION_QUALITY,
+            // VALUE_COLOR_RENDER_QUALITY and VALUE_RENDER_QUALITY are all set.
+            // A workaround is to get a pre-scaled image with Image.getScaledInstance()
+            // and then draw that one. To reduce differences in testing
+            // (partly because the method needs integer parameters), only smaller scalings
+            // will trigger the workaround. Because of the slowness we only do it if the user
+            // expects quality rendering and interpolation.
+            Matrix imageTransformMatrix = new Matrix(imageTransform);
+            AffineTransform graphicsTransformA = graphics.getTransform();
+            Matrix graphicsTransformMatrix = new Matrix(graphicsTransformA);    
+            float scaleX = Math.abs(imageTransformMatrix.getScalingFactorX() * graphicsTransformMatrix.getScalingFactorX());
+            float scaleY = Math.abs(imageTransformMatrix.getScalingFactorY() * graphicsTransformMatrix.getScalingFactorY());
+
+            if ((scaleX < 0.5 || scaleY < 0.5) &&
+                RenderingHints.VALUE_RENDER_QUALITY.equals(graphics.getRenderingHint(RenderingHints.KEY_RENDERING)) &&
+                RenderingHints.VALUE_INTERPOLATION_BICUBIC.equals(graphics.getRenderingHint(RenderingHints.KEY_INTERPOLATION)))
+            {
+                int w = Math.round(image.getWidth() * scaleX);
+                int h = Math.round(image.getHeight() * scaleY);
+                if (w < 1 || h < 1)
+                {
+                    graphics.drawImage(image, imageTransform, null);
+                    return;
+                }
+                Image imageToDraw = image.getScaledInstance(w, h, Image.SCALE_SMOOTH);
+                // remove the scale (extracted from w and h, to have it from the rounded values
+                // hoping to reverse the rounding: without this, we get an horizontal line
+                // when rendering PDFJS-8860-Pattern-Size1.pdf at 100% )
+                imageTransform.scale(1f / w * image.getWidth(), 1f / h * image.getHeight());
+                imageTransform.preConcatenate(graphicsTransformA);
+                graphics.setTransform(new AffineTransform());
+                graphics.drawImage(imageToDraw, imageTransform, null);
+                graphics.setTransform(graphicsTransformA);
+            }
+            else
             {
                 graphics.drawImage(image, imageTransform, null);
             }
@@ -1882,17 +1942,19 @@ public class PageDrawer extends PDFGraphicsStreamEngine
             visibles.add(!isHiddenOCG(prop));
         }
         COSName visibilityPolicy = ocmd.getVisibilityPolicy();
+        // visible if any of the entries in OCGs are OFF
         if (COSName.ANY_OFF.equals(visibilityPolicy))
         {
             for (boolean visible : visibles)
             {
                 if (!visible)
                 {
-                    return true;
+                    return false;
                 }
             }
-            return false;
+            return true;
         }
+        // visible only if all of the entries in OCGs are ON
         if (COSName.ALL_ON.equals(visibilityPolicy))
         {
             for (boolean visible : visibles)
@@ -1904,17 +1966,19 @@ public class PageDrawer extends PDFGraphicsStreamEngine
             }
             return false;
         }
+        // visible only if all of the entries in OCGs are OFF
         if (COSName.ALL_OFF.equals(visibilityPolicy))
         {
             for (boolean visible : visibles)
             {
                 if (visible)
                 {
-                    return false;
+                    return true;
                 }
             }
-            return true;
+            return false;
         }
+        // visible if any of the entries in OCGs are ON
         // AnyOn is default
         for (boolean visible : visibles)
         {

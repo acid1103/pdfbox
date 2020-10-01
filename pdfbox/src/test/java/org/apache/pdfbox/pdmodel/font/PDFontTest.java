@@ -20,12 +20,21 @@ package org.apache.pdfbox.pdmodel.font;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.fontbox.ttf.TTFParser;
+import org.apache.fontbox.ttf.TrueTypeCollection;
 import org.apache.fontbox.ttf.TrueTypeFont;
+import org.apache.fontbox.util.autodetect.FontFileFinder;
 import org.apache.pdfbox.cos.COSName;
+import org.apache.pdfbox.io.IOUtils;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
@@ -175,7 +184,7 @@ public class PDFontTest
         doc = PDDocument.load(outputFile);
 
         font = (PDType1Font) doc.getPage(0).getResources().getFont(COSName.getPDFName("F1"));
-        Assert.assertEquals(font.getEncoding(), WinAnsiEncoding.INSTANCE);
+        Assert.assertEquals(WinAnsiEncoding.INSTANCE, font.getEncoding());
 
         for (char c : text.toCharArray())
         {
@@ -214,6 +223,53 @@ public class PDFontTest
         catch (IllegalArgumentException ex)
         {
         }
+    }
+
+    @Test
+    public void testFullEmbeddingTTC() throws IOException
+    {
+        FontFileFinder fff = new FontFileFinder();
+        TrueTypeCollection ttc = null;
+        for (URI uri : fff.find())
+        {
+            if (uri.getPath().endsWith(".ttc"))
+            {
+                File file = new File(uri);
+                System.out.println("TrueType collection file: " + file);
+                ttc = new TrueTypeCollection(file);
+                break;
+            }
+        }
+        if (ttc == null)
+        {
+            System.out.println("testFullEmbeddingTTC skipped, no .ttc files available");
+            return;
+        }
+
+        final List<String> names = new ArrayList<String>();
+        ttc.processAllFonts(new TrueTypeCollection.TrueTypeFontProcessor()
+        {
+            @Override
+            public void process(TrueTypeFont ttf) throws IOException
+            {
+                System.out.println("TrueType font in collection: " + ttf.getName());
+                names.add(ttf.getName());
+            }
+        });
+
+        TrueTypeFont ttf = ttc.getFontByName(names.get(0)); // take the first one
+        System.out.println("TrueType font used for test: " + ttf.getName());
+
+        try
+        {
+            PDType0Font.load(new PDDocument(), ttf, false);
+        }
+        catch (IOException ex)
+        {
+            Assert.assertEquals("Full embedding of TrueType font collections not supported", ex.getMessage());
+            return;
+        }
+        Assert.fail("should have thrown IOException");
     }
 
     private void testPDFBox3826checkFonts(byte[] byteArray, File fontFile) throws IOException
@@ -288,5 +344,50 @@ public class PDFontTest
         doc.save(baos);
         doc.close();
         return baos.toByteArray();
+    }
+
+    /**
+     * Check that font can be deleted after usage.
+     * 
+     * @throws IOException 
+     */
+    @Test
+    public void testDeleteFont() throws IOException
+    {
+        File tempFontFile = new File(OUT_DIR, "LiberationSans-Regular.ttf");
+        File tempPdfFile = new File(OUT_DIR, "testDeleteFont.pdf");
+        String text = "Test PDFBOX-4823";
+
+        InputStream is = PDFont.class.getResourceAsStream(
+                "/org/apache/pdfbox/resources/ttf/LiberationSans-Regular.ttf");
+
+        OutputStream os = new FileOutputStream(tempFontFile);
+        IOUtils.copy(is, os);
+        is.close();
+        os.close();
+
+        PDDocument doc = new PDDocument();
+        PDPage page = new PDPage();
+        doc.addPage(page);
+        PDPageContentStream cs = new PDPageContentStream(doc, page);
+        PDFont font1 = PDType0Font.load(doc, tempFontFile);
+        cs.beginText();
+        cs.setFont(font1, 50);
+        cs.newLineAtOffset(50, 700);
+        cs.showText(text);
+        cs.endText();
+        cs.close();
+        doc.save(tempPdfFile);
+        doc.close();
+
+        Assert.assertTrue(tempFontFile.delete());
+
+        doc = PDDocument.load(tempPdfFile);
+        PDFTextStripper stripper = new PDFTextStripper();
+        String extractedText = stripper.getText(doc);
+        Assert.assertEquals(text, extractedText.trim());
+        doc.close();
+
+        Assert.assertTrue(tempPdfFile.delete());
     }
 }

@@ -16,6 +16,7 @@
  */
 package org.apache.pdfbox.pdmodel.font;
 
+import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -28,6 +29,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.Set;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.fontbox.FontBoxFont;
 import org.apache.fontbox.ttf.OpenTypeFont;
 import org.apache.fontbox.ttf.TTFParser;
@@ -41,6 +44,8 @@ import org.apache.fontbox.type1.Type1Font;
  */
 final class FontMapperImpl implements FontMapper
 {
+    private static final Log LOG = LogFactory.getLog(FontMapperImpl.class);
+
     private static final FontCache fontCache = new FontCache(); // todo: static cache isn't ideal
     private FontProvider fontProvider;
     private Map<String, FontInfo> fontInfoByName;
@@ -108,11 +113,8 @@ final class FontMapperImpl implements FontMapper
         try
         {
             String ttfName = "/org/apache/pdfbox/resources/ttf/LiberationSans-Regular.ttf";
-            InputStream ttfStream = FontMapper.class.getResourceAsStream(ttfName);
-            if (ttfStream == null)
-            {
-                throw new IOException("Error loading resource: " + ttfName);
-            }
+            InputStream ttfStream =
+                    new BufferedInputStream(FontMapper.class.getResourceAsStream(ttfName));
             TTFParser ttfParser = new TTFParser();
             lastResortFont = ttfParser.parse(ttfStream);
         }
@@ -467,6 +469,10 @@ final class FontMapperImpl implements FontMapper
         FontInfo info = fontInfoByName.get(postScriptName);
         if (info != null && info.getFormat() == format)
         {
+            if (LOG.isDebugEnabled())
+            {
+                LOG.debug(String.format("getFont('%s','%s') returns %s", format, postScriptName, info));
+            }
             return info;
         }
         return null;
@@ -513,6 +519,10 @@ final class FontMapperImpl implements FontMapper
                 FontMatch bestMatch = queue.poll();
                 if (bestMatch != null)
                 {
+                    if (LOG.isDebugEnabled())
+                    {
+                        LOG.debug("Best match for '" + baseFont + "': " + bestMatch.info);
+                    }
                     FontBoxFont font = bestMatch.info.getFont();
                     if (font instanceof OpenTypeFont)
                     {
@@ -667,6 +677,11 @@ final class FontMapperImpl implements FontMapper
             long CHINESE_TRADITIONAL = 1 << 20;
             long KOREAN_JOHAB = 1 << 21;
             
+            if ("MalgunGothic-Semilight".equals(info.getPostScriptName()))
+            {
+                // PDFBOX-4793 and PDF.js 10699: This font has only Korean, but has bits 17-21 set.
+                codePageRange &= ~(JIS_JAPAN | CHINESE_SIMPLIFIED | CHINESE_TRADITIONAL);
+            }
             if (cidSystemInfo.getOrdering().equals("GB1") &&
                     (codePageRange & CHINESE_SIMPLIFIED) == CHINESE_SIMPLIFIED)
             {
@@ -685,8 +700,8 @@ final class FontMapperImpl implements FontMapper
             else
             {
                 return cidSystemInfo.getOrdering().equals("Korea1") &&
-                        (codePageRange & KOREAN_WANSUNG) == KOREAN_WANSUNG ||
-                        (codePageRange & KOREAN_JOHAB) == KOREAN_JOHAB;
+                        ((codePageRange & KOREAN_WANSUNG) == KOREAN_WANSUNG ||
+                         (codePageRange & KOREAN_JOHAB) == KOREAN_JOHAB);
             }
         }
     }

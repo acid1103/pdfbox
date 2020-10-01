@@ -16,7 +16,6 @@
  */
 package org.apache.pdfbox.pdmodel.graphics.color;
 
-import java.awt.Color;
 import java.awt.Transparency;
 import java.awt.color.CMMException;
 import java.awt.color.ColorSpace;
@@ -152,7 +151,7 @@ public final class PDICCBased extends PDCIEBasedColorSpace
         if (indirect != null && resources != null && resources.getResourceCache() != null)
         {
             PDColorSpace space = resources.getResourceCache().getColorSpace(indirect);
-            if (space != null && space instanceof PDICCBased)
+            if (space instanceof PDICCBased)
             {
                 return (PDICCBased) space;
             }
@@ -247,7 +246,7 @@ public final class PDICCBased extends PDCIEBasedColorSpace
                     // or CMMException due to invalid profiles, see PDFBOX-1295 and PDFBOX-1740 (ü-file)
                     // or ArrayIndexOutOfBoundsException, see PDFBOX-3610
                     // also triggers a ProfileDataException for PDFBOX-3549 with KCMS
-                    new Color(awtColorSpace, new float[getNumberOfComponents()], 1f);
+                    awtColorSpace.toRGB(new float[getNumberOfComponents()]);
                 }
                 else
                 {
@@ -386,6 +385,18 @@ public final class PDICCBased extends PDCIEBasedColorSpace
         if (numberOfComponents < 0)
         {
             numberOfComponents = stream.getCOSObject().getInt(COSName.N);
+
+            // PDFBOX-4801 correct wrong /N values
+            if (iccProfile != null)
+            {
+                int numIccComponents = iccProfile.getNumComponents();
+                if (numIccComponents != numberOfComponents)
+                {
+                    LOG.warn("Using " + numIccComponents + " components from ICC profile info instead of " +
+                            numberOfComponents + " components from /N entry");
+                    numberOfComponents = numIccComponents;
+                }
+            }
         }
         return numberOfComponents;
     }
@@ -527,8 +538,8 @@ public final class PDICCBased extends PDCIEBasedColorSpace
     /**
      * Sets the number of color components.
      * @param n the number of color components
+     * @deprecated it's probably not safe to use this, this method will be removed in 3.0.
      */
-    // TODO it's probably not safe to use this
     @Deprecated
     public void setNumberOfComponents(int n)
     {

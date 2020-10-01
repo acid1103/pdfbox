@@ -86,6 +86,8 @@ public class OcspHelper
     private DEROctetString encodedNonce;
     private X509Certificate ocspResponderCertificate;
     private final JcaX509CertificateConverter certificateConverter = new JcaX509CertificateConverter();
+
+    // SecureRandom.getInstanceStrong() would be better, but sometimes blocks on Linux
     private static final Random rand = new SecureRandom();
 
     /**
@@ -308,7 +310,7 @@ public class OcspHelper
                     return;
                 }
             }
-            catch (CertificateException ex)
+            catch (CertificateEncodingException ex)
             {
                 // unlikely to happen because the certificate existed as an object
                 LOG.error(ex, ex);
@@ -585,7 +587,6 @@ public class OcspHelper
 
     private byte[] create16BytesNonce()
     {
-        // replace with SecureRandom.getInstanceStrong() on jdk8 and higher
         byte[] nonce = new byte[16];
         rand.nextBytes(nonce);
         return nonce;

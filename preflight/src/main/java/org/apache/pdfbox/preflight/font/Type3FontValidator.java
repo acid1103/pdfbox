@@ -283,7 +283,7 @@ public class Type3FontValidator extends FontValidator<Type3Container>
      * 
      * For each character, the Glyph width must be the same as the Width value declared in the Widths array.
      */
-    private void checkCharProcsAndMetrics() throws ValidationException
+    private void checkCharProcsAndMetrics()
     {
         List<Float> widths = getWidths(font);
         if (widths == null || widths.isEmpty())
@@ -380,7 +380,7 @@ public class Type3FontValidator extends FontValidator<Type3Container>
         return widths;
     }
 
-    private PDType3CharProc getCharProc(int code) throws ValidationException
+    private PDType3CharProc getCharProc(int code)
     {
         PDType3CharProc charProc = font.getCharProc(code);
         if (charProc == null)

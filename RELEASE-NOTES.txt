@@ -1,11 +1,11 @@
-Release Notes -- Apache PDFBox -- Version 2.0.19
+Release Notes -- Apache PDFBox -- Version 2.0.21
 
 Introduction
 ------------
 
 The Apache PDFBox library is an open source Java tool for working with PDF documents.
 
-This is an incremental bugfix release based on the earlier 2.0.18 release. It contains
+This is an incremental bugfix release based on the earlier 2.0.20 release. It contains
 a couple of fixes and small improvements.
 
 For more details on these changes and all the other fixes and improvements
@@ -14,47 +14,56 @@ PDFBox issue tracker at https://issues.apache.org/jira/browse/PDFBOX.
 
 Bug
 
-[PDFBOX-4720] - cmap entries "<0000> <FFFF> <0000>" are cut
-[PDFBOX-4722] - TestTextStripper doesn't detect when less output
-[PDFBOX-4724] - Wrong calculation of position in InputStreamSource#readFully
-[PDFBOX-4727] - ExtractEmbeddedFiles.java example uses name tree keys as file names
-[PDFBOX-4730] - /OC in form and image XObjects not handled
-[PDFBOX-4738] - getDocument().getObjects() returns nothing for split result documents
-[PDFBOX-4741] - NullPointerException in PlainText constructor
-[PDFBOX-4742] - Incorrect handling of float Infinity and NaN
-[PDFBOX-4745] - COSObjectKey.hashCode doesn't work for generation numbers > 0
-[PDFBOX-4750] - java.io.IOException: Error:Unknown type in content stream:COSNull{}
-[PDFBOX-4753] - NumberFormatException while parsing a certain PDF document
-[PDFBOX-4755] - Fonts improperly rendered
-[PDFBOX-4756] - ScratchFileBuffer seek beyond the last page
-[PDFBOX-4760] - wordSeparator not being inserted when word ends with " "
-[PDFBOX-4763] - Can't get inline image raw data
-[PDFBOX-4765] - NPE in ExtractImages.ImageGraphicsEngine().run()
-[PDFBOX-4771] - JPEG image with transparency can't be extracted
-[PDFBOX-4772] - Improve memory consumption of PDAbstractAppearanceHandler (2)
-[PDFBOX-4777] - Avoid OOM for malformed PDFs using a huge First valkue within object streams
-
-New Feature
-
-[PDFBOX-4721] - Move Apache PDFBox from a low-API model
+[PDFBOX-3835] - Wrap long words for multiline text fields
+[PDFBOX-4568] - Field text poorly vertically aligned
+[PDFBOX-4729] - Wrong position of text in PDTextField with multiline
+[PDFBOX-4850] - Image rendering issue
+[PDFBOX-4860] - Preflight doesn't catch repetition of elements in XMP
+[PDFBOX-4863] - Bitmapped fonts are rendered very blurry
+[PDFBOX-4866] - java.lang.IndexOutOfBoundsException
+[PDFBOX-4871] - java.lang.ArrayIndexOutOfBoundsException: 3
+[PDFBOX-4872] - java.lang.ClassCastException: org.apache.fontbox.cmap.CMapParser$Operator cannot be cast to java.lang.Number
+[PDFBOX-4878] - Call to DictionaryEncoding.getEncoding () throws NullPointerException for some PDF's
+[PDFBOX-4879] - Binary compatibility is broken in 2.0.20
+[PDFBOX-4880] - NullPointerException in TrueTypeEmbedder.createFontDescriptor() with OCR-B font
+[PDFBOX-4882] - Two conditions are always false in TrueTypeEmbedder.isEmbeddingPermitted
+[PDFBOX-4887] - Using the same font fully embedded in plain text and PDTextField, it throws an exception in PDTextField.setValue
+[PDFBOX-4889] - Cannot flatten this file.
+[PDFBOX-4890] - Stack overflow in BufferedRandomAccessFile.read() while creating font cache
+[PDFBOX-4891] - nbspace missing in WinAnsiEncoding and MacRomanEncoding
+[PDFBOX-4894] - Invalid file offsets for PDF files larger than 2G
+[PDFBOX-4897] - PDFObjectStreamParser doesnt use offset
+[PDFBOX-4900] - PDFBox Rendering of PDF Page incorrect when using the special None Named Separation
+[PDFBOX-4902] - PDF/A validation fails when system time zone has minutes
+[PDFBOX-4904] - Bold text leads to wrong order - Text extraction
+[PDFBOX-4906] - PDOptionalContentProperties hasGroup can null pointer if OCGs data is missing
+[PDFBOX-4907] - Signature not detected by Acrobat Reader
+[PDFBOX-4913] - ArrayIndexOutOfBoundsException in ShadingContext.convertToRGB()
+[PDFBOX-4915] - "Page tree root must be a dictionary" on PDDocument.load
+[PDFBOX-4920] - OCSP validation takes very long in ci build
+[PDFBOX-4923] - IllegalArgumentException: The start and the end values must not have different lengths
+[PDFBOX-4927] - IllegalStateException: Expected 'Page' but found COSName{Annot} in PDPageTree.sanitizeType
+[PDFBOX-4930] - Font thickness issue when we use PDFBox for generating images from PDF
 
 Improvement
 
-[PDFBOX-4734] - ExtractImages should create CCITT G4 compressed TIFF files when possible
-[PDFBOX-4735] - WriteDecodedDoc should create an xref table instead of an xref stream
-[PDFBOX-4762] - Inconsistent handling of incorrect data
-[PDFBOX-4766] - PDInlineImage.getSuffix() returns null
-[PDFBOX-4779] - PDFBOX: Update Bouncy Castle Crypto to version 1.64
+[PDFBOX-3812] - Support auto size font for multiline PDTextField
+[PDFBOX-4594] - Multiline field text with auto font sizing should be size adjusted
+[PDFBOX-4869] - Reading standard 14 fonts is slow
+[PDFBOX-4875] - Lazy load standard 14 fonts, only if needed
+[PDFBOX-4877] - Matrix class performance improvements
+[PDFBOX-4895] - Faster COSNumber
+[PDFBOX-4896] - Don't save and restore graphic states around showGlyph in LegacyPDFStreamEngine
+[PDFBOX-4909] - Don't calculate font height for every glyph
 
 Task
 
-[PDFBOX-4757] - Enable as much PDAcroFormFlattenTest tests as possible
-[PDFBOX-4759] - Add tests for PDFBOX-4153 and PDFBOX-4490
+[PDFBOX-4071] - Improve code quality (3)
+[PDFBOX-4933] - Correct PDFBOX-1777 to PDFBOX-1977 in tests
 
 Sub-task
 
-[PDFBOX-4731] - Support RenderDestination
-[PDFBOX-4732] - Support ImageType
+[PDFBOX-3910] - Support auto font sizing in multiline text fields
 
 Release Contents
 ----------------
@@ -77,7 +86,7 @@ documents and the ability to extract content from documents. Apache PDFBox
 also includes several command line utilities. Apache PDFBox is published
 under the Apache License, Version 2.0.
 
-For more information, visit http://pdfbox.apache.org/
+For more information, visit https://pdfbox.apache.org/
 
 About The Apache Software Foundation
 ------------------------------------
@@ -89,4 +98,4 @@ enables individual and commercial users to easily deploy Apache software;
 the Foundation's intellectual property framework limits the legal exposure
 of its 2,500+ contributors.
 
-For more information, visit http://www.apache.org/
+For more information, visit https://www.apache.org/

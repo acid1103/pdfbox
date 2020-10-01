@@ -16,6 +16,7 @@
  */
 package org.apache.pdfbox.text;
 
+import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -216,6 +217,11 @@ public class PDFTextStripper extends LegacyPDFStreamEngine
     /**
      * This will return the text of a document. See writeText. <br>
      * NOTE: The document must not be encrypted when coming into this method.
+     * 
+     * <p>IMPORTANT: By default, text extraction is done in the same sequence as the text in the PDF page content stream.
+     * PDF is a graphic format, not a text format, and unlike HTML, it has no requirements that text one on page
+     * be rendered in a certain order. The order is the one that was determined by the software that created the
+     * PDF. To get text sorted from left to right and top to botton, use {@link #setSortByPosition(boolean)}.
      *
      * @param doc The document to get the text from.
      * @return The text of the PDF document.
@@ -724,8 +730,8 @@ public class PDFTextStripper extends LegacyPDFStreamEngine
 
     private boolean overlap(float y1, float height1, float y2, float height2)
     {
-        return within(y1, y2, .1f) || (y2 <= y1 && y1 - height1 - y2 < -(height1 * 0.1f))
-                || (y1 <= y2 && y2 - height2 - y1 < -(height2 * 0.1f));
+        return within(y1, y2, .1f) || y2 <= y1 && y2 >= y1 - height1
+                || y1 <= y2 && y1 >= y2 - height2;
     }
 
     /**
@@ -1842,17 +1848,10 @@ public class PDFTextStripper extends LegacyPDFStreamEngine
     static
     {
         String path = "/org/apache/pdfbox/resources/text/BidiMirroring.txt";
-        InputStream input = PDFTextStripper.class.getResourceAsStream(path);
+        InputStream input = new BufferedInputStream(PDFTextStripper.class.getResourceAsStream(path));
         try
         {
-            if (input != null)
-            {
-                parseBidiFile(input);
-            }
-            else
-            {
-                LOG.warn("Could not find '" + path + "', mirroring char map will be empty: ");
-            }
+            parseBidiFile(input);
         }
         catch (IOException e)
         {

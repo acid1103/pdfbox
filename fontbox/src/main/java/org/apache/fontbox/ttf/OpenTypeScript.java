@@ -16,6 +16,7 @@
  */
 package org.apache.fontbox.ttf;
 
+import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -206,9 +207,8 @@ public final class OpenTypeScript
             {"Yi", new String[] { "yi  " }}
         };
         UNICODE_SCRIPT_TO_OPENTYPE_TAG_MAP = new HashMap<String, String[]>(table.length);
-        for (Object obj : table)
+        for (Object[] array : table)
         {
-            Object[] array = (Object[]) obj;
             UNICODE_SCRIPT_TO_OPENTYPE_TAG_MAP.put((String) array[0], (String[]) array[1]);
         }
     }
@@ -222,15 +222,8 @@ public final class OpenTypeScript
         InputStream input = null;
         try
         {
-            input = OpenTypeScript.class.getResourceAsStream(path);
-            if (input != null)
-            {
-                parseScriptsFile(input);
-            }
-            else
-            {
-                LOG.warn("Could not find '" + path + "', mirroring char map will be empty: ");
-            }
+            input = new BufferedInputStream(OpenTypeScript.class.getResourceAsStream(path));
+            parseScriptsFile(input);
         }
         catch (IOException e)
         {

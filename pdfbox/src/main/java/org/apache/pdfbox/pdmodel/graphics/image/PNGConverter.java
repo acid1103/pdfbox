@@ -407,6 +407,7 @@ final class PNGConverter
                     == 1 ? COSName.DEVICEGRAY : COSName.DEVICERGB);
             if (state.iCCP != null)
             {
+                cosStream.setItem(COSName.FILTER, COSName.FLATE_DECODE);
                 // We need to skip over the name
                 int iccProfileDataStart = 0;
                 while (iccProfileDataStart < 80 && iccProfileDataStart < state.iCCP.length)
@@ -415,6 +416,7 @@ final class PNGConverter
                         break;
                     iccProfileDataStart++;
                 }
+                iccProfileDataStart++;
                 if (iccProfileDataStart >= state.iCCP.length)
                 {
                     LOG.error("Invalid iCCP chunk, to few bytes");
@@ -512,7 +514,17 @@ final class PNGConverter
         @Override
         public int read() throws IOException
         {
-            throw new IllegalStateException("Only bulk reads are expected!");
+            if (!ensureStream())
+            {
+                return -1;
+            }
+            int ret = currentStream.read();
+            if (ret == -1)
+            {
+                currentStream = null;
+                return read();
+            }
+            return ret;
         }
 
         @Override
