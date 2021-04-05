@@ -53,7 +53,7 @@
     <module>tools</module>
     <module>app</module>
     <module>debugger-app</module>
-    <module>examples</module>
+    <!-- <module>examples</module> -->
   </modules>
 
   <build>
